@@ -1,0 +1,43 @@
+[project]
+name = "workiq-connector"
+version = "0.1.0"
+description = "ACL-aware Graph indexing and federated MCP write-back demo"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "starlette>=0.46,<2",
+    "uvicorn>=0.34,<1",
+    "httpx>=0.28,<1",
+    "mcp>=1.26,<2",
+    "PyJWT[crypto]>=2.10,<3",
+    "pydantic-settings>=2.7,<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<10",
+    "pytest-asyncio>=0.25,<2",
+    "ruff>=0.11,<1",
+    "ty>=0.0.1,<1",
+]
+gui = [
+    "pyside6-essentials>=6.8,<7",
+]
+
+[tool.uv]
+default-groups = ["dev", "gui"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["mcp", "gui"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ty.environment]
+extra-paths = ["mcp", "gui"]

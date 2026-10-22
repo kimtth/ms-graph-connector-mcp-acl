@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+.env.*
+!.env.example
+data/
+.pytest_cache/
+.ruff_cache/
+playwright-report/
+node_modules/
+mcp/web/index.html
+setup.params.ps1
+uv.lock
+package-lock.json

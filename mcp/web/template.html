@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Service desk</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <!--MSAL_BUNDLE-->
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body { max-width: 1100px; margin: 32px auto; padding: 0 24px;
+      background: var(--cp-bg); color: var(--cp-text);
+      font: 14px/1.5 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    h1 { font-size: 24px; } h2 { margin-top: 32px; font-size: 18px; }
+    table { width: 100%; border-collapse: collapse; background: var(--cp-surface); }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--cp-border);
+      overflow-wrap: anywhere; }
+    th { background: var(--cp-surface-soft); }
+    button, input, select, textarea { font: inherit; padding: 8px; border-radius: 10px;
+      border: 1px solid var(--cp-border-strong); background: var(--cp-surface); color: var(--cp-text); }
+    button { cursor: pointer; } button:hover { border-color: var(--cp-accent); }
+    button:disabled { opacity: .5; cursor: default; }
+    label { display: block; margin: 12px 0 4px; }
+    textarea { display: block; width: 100%; min-height: 100px; }
+    #message { min-height: 24px; color: var(--cp-text-muted); }
+    #message.error { color: var(--cp-danger); }
+    #identity, small { color: var(--cp-text-muted); }
+    pre { white-space: pre-wrap; font: 12px Consolas, "Courier New", Courier, monospace; }
+    .scroll { overflow-x: auto; } [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header><h1>Service desk</h1><button id="signin">Sign in / switch account</button></header>
+  <p id="identity">Sign in with a configured test user.</p>
+  <form id="search"><input id="query" value="service desk" maxlength="300" required aria-label="Search">
+    <button disabled>Search</button> <small>Microsoft Graph index</small></form>
+  <p id="message" role="status" aria-live="polite"></p>
+  <div class="scroll"><table>
+    <thead><tr><th>ID</th><th>Title</th><th>Status</th><th>Indexed version</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table></div>
+  <section id="record" hidden>
+    <h2 id="title"></h2><p id="access"></p>
+    <form id="edit">
+      <label for="body">Description</label><textarea id="body" required maxlength="8000"></textarea>
+      <label for="status">Status</label><select id="status">
+        <option value="open">Open</option><option value="resolved">Resolved</option></select>
+      <p><button id="save">Save through MCP</button>
+        <button id="denied" type="button">Test write denial</button></p>
+    </form>
+    <details><summary>Record permissions</summary><pre id="acl"></pre></details>
+  </section>
+  <h2>Audit history</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Time (UTC)</th><th>Ticket</th><th>Actor</th><th>Action</th><th>Version</th></tr></thead>
+    <tbody id="audit"></tbody>
+  </table></div>
+  <script>
+    "use strict";
+    const $ = id => document.getElementById(id);
+    const graphScope = "https://graph.microsoft.com/ExternalItem.Read.All";
+    let config, auth, account, ticket, busy = false, id = 0, protocol = "2025-06-18";
+    function element(tag, text) { const el = document.createElement(tag); el.textContent = text; return el; }
+    function message(text, error = false) {
+      $("message").textContent = text; $("message").className = error ? "error" : "";
+    }
+    async function run(action) {
+      if (busy) return;
+      busy = true; message("");
+      document.querySelectorAll("button").forEach(b => b.disabled = true);
+      try { await action(); } catch (error) { message(error.message, true); }
+      finally {
+        busy = false;
+        document.querySelectorAll("button").forEach(b => b.disabled = false);
+        $("search").querySelector("button").disabled = !account;
+        $("save").disabled = !ticket?.can_write;
+      }
+    }
+    async function token(scope) {
+      if (!account) throw new Error("Sign in first.");
+      return (await auth.acquireTokenSilent({account, scopes: [scope]})).accessToken;
+    }
+    async function api(path) {
+      const r = await fetch(path, {headers: {Authorization: `Bearer ${await token(config.scope)}`}});
+      const data = await r.json(); if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      return data;
+    }
+    async function rpc(method, params, notification = false) {
+      const r = await fetch("/mcp/", {method: "POST", headers: {
+        Authorization: `Bearer ${await token(config.scope)}`, "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream", "MCP-Protocol-Version": protocol},
+        body: JSON.stringify({jsonrpc: "2.0", ...(!notification ? {id: ++id} : {}), method, params})});
+      if (r.status === 202) return;
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error?.message || data.error || `MCP HTTP ${r.status}`);
+      return data.result;
+    }
+    async function tool(name, args) {
+      const r = await rpc("tools/call", {name, arguments: args});
+      if (r.isError && !r.structuredContent?.source_update)
+        throw new Error(r.content.map(c => c.text || "").join("\n"));
+      return r.structuredContent || JSON.parse(r.content[0].text);
+    }
+    async function search() {
+      $("results").replaceChildren();
+      const r = await fetch("https://graph.microsoft.com/v1.0/search/query", {
+        method: "POST", headers: {Authorization: `Bearer ${await token(graphScope)}`,
+          "Content-Type": "application/json"}, body: JSON.stringify({requests: [{
+            entityTypes: ["externalItem"], contentSources: [`/external/connections/${config.connection}`],
+            query: {queryString: $("query").value}, from: 0, size: 50,
+            fields: ["ticketId", "title", "status", "version"]
+          }]})});
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error?.message || `Graph HTTP ${r.status}`);
+      let count = 0;
+      for (const result of data.value) for (const container of result.hitsContainers || [])
+        for (const hit of container.hits || []) {
+          const p = hit.resource.properties, row = element("tr", ""), link = element("button", p.ticketId);
+          link.onclick = () => run(() => open(p.ticketId));
+          const cell = element("td", ""); cell.append(link); row.append(cell);
+          for (const value of [p.title, p.status, p.version]) row.append(element("td", value));
+          $("results").append(row); count++;
+        }
+      message(`${count} indexed results (up to 50).`);
+    }
+    async function open(ticketId) {
+      ticket = null; $("record").hidden = true;
+      ticket = await tool("fetch_ticket", {ticket_id: ticketId});
+      $("title").textContent = `${ticket.id}: ${ticket.title}`;
+      $("access").textContent = `Source version ${ticket.version}. ${ticket.can_write ? "Read and write." : "Read only."}`;
+      $("body").value = ticket.body; $("status").value = ticket.status;
+      $("body").disabled = $("status").disabled = !ticket.can_write;
+      $("denied").hidden = ticket.can_write;
+      $("acl").textContent = JSON.stringify({read: ticket.readers, write: ticket.writers}, null, 2);
+      $("record").hidden = false;
+    }
+    async function audit() {
+      $("audit").replaceChildren();
+      for (const event of await api("/audit")) {
+        const row = element("tr", ""), detail = JSON.parse(event.detail);
+        for (const value of [event.at, event.ticket, event.actor, event.action, detail.after?.version || "-"])
+          row.append(element("td", value));
+        $("audit").append(row);
+      }
+    }
+    async function start() {
+      const me = await api("/me"); $("identity").textContent = `${me.name} (${me.oid})`;
+      protocol = (await rpc("initialize", {protocolVersion: protocol, capabilities: {},
+        clientInfo: {name: "service-desk", version: "1"}})).protocolVersion;
+      await rpc("notifications/initialized", {}, true);
+      await search(); await audit();
+      const linked = new URLSearchParams(location.search).get("ticket");
+      if (linked) await open(linked);
+    }
+    $("signin").onclick = () => run(async () => {
+      $("identity").textContent = "Signing in...";
+      await auth.loginRedirect({scopes: [config.scope], prompt: "select_account"});
+    });
+    $("search").onsubmit = event => { event.preventDefault(); run(search); };
+    $("edit").onsubmit = event => { event.preventDefault(); run(async () => {
+      if (!ticket?.can_write || !confirm(`Update ${ticket.id} through MCP?`)) return;
+      const result = await tool("update_ticket", {ticket_id: ticket.id,
+        expected_version: ticket.version, body: $("body").value, status: $("status").value});
+      await open(ticket.id); await audit();
+      message(result.index_update === "failed"
+        ? `Source saved; index submission FAILED: ${result.error}. Run the sync command to retry.`
+        : "Saved through MCP and audited. Graph accepted the update; rerun search after propagation.",
+        result.index_update === "failed");
+    }); };
+    $("denied").onclick = () => run(async () => {
+      try {
+        await tool("update_ticket", {ticket_id: ticket.id, expected_version: ticket.version,
+          body: ticket.body, status: ticket.status});
+        throw new Error("Unexpected write success: inspect source permissions.");
+      } finally { await audit(); }
+    });
+    run(async () => {
+      const r = await fetch("/config"); if (!r.ok) throw new Error(`Configuration HTTP ${r.status}`);
+      config = await r.json();
+      auth = new msal.PublicClientApplication({auth: {
+        clientId: config.client, authority: `https://login.microsoftonline.com/${config.tenant}`,
+        redirectUri: `${location.origin}/`}, cache: {cacheLocation: "sessionStorage"}});
+      await auth.initialize();
+      const result = await auth.handleRedirectPromise();
+      if (result) { account = result.account; await start(); }
+    });
+  </script>
+</body>
+</html>
